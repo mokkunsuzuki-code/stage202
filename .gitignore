@@ -1,4 +1,7 @@
+# Stage201 ignores (generated)
 out/
 __pycache__/
 *.pyc
-out/
+*.pyo
+*.pyd
+.DS_Store
