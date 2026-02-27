@@ -1,0 +1,33 @@
+name: stage202-ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+
+jobs:
+  stage202:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: pip install pyyaml
+
+      - name: Generate PoC report
+        run: python tools/gen_poc_report.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stage202-poc-report
+          path: |
+            poc_report.md
+            claims/claims.yaml
+            out/ci/actions_runs.json
+            out/ci/actions_jobs.json
