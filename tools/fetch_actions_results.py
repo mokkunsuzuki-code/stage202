@@ -10,14 +10,17 @@ from typing import Any, Dict, List, Optional
 
 
 def sh(cmd: List[str], env: Optional[Dict[str, str]] = None) -> str:
-    r = subprocess.run(cmd, check=True, text=True, capture_output=True, env=env)
+    r = subprocess.run(cmd, text=True, capture_output=True, env=env)
+    if r.returncode != 0:
+        print("[ERR] command failed:", " ".join(cmd))
+        print("[ERR] stdout:\n", r.stdout)
+        print("[ERR] stderr:\n", r.stderr)
+        raise SystemExit(r.returncode)
     return r.stdout
 
 
 def gh_env() -> Dict[str, str]:
     env = os.environ.copy()
-    # GitHub Actions: GH_TOKEN or GITHUB_TOKEN
-    # Local: you likely already did `gh auth login`
     if "GH_TOKEN" not in env and "GITHUB_TOKEN" in env:
         env["GH_TOKEN"] = env["GITHUB_TOKEN"]
     return env
@@ -39,11 +42,10 @@ def main() -> None:
 
     env = gh_env()
 
-    # 1) Determine run_id
+    # Determine run_id
     if args.run_id is not None:
         run_id = args.run_id
     else:
-        # fallback: latest run
         runs_json = sh(
             [
                 "gh",
@@ -63,7 +65,7 @@ def main() -> None:
             raise SystemExit("[ERR] no runs found")
         run_id = int(runs[0]["databaseId"])
 
-    # 2) Fetch run (single) + jobs (for that run)
+    # Fetch run (single) — keep fields conservative to avoid gh version mismatch
     run_json = sh(
         [
             "gh",
@@ -73,12 +75,13 @@ def main() -> None:
             "--repo",
             args.repo,
             "--json",
-            "databaseId,status,conclusion,createdAt,headSha,displayTitle,event,htmlURL",
+            "databaseId,status,conclusion,createdAt,headSha,displayTitle,event,url",
         ],
         env=env,
     )
     run_obj = load_json(run_json)
 
+    # Fetch jobs
     jobs_json = sh(
         [
             "gh",
